@@ -323,7 +323,7 @@ export default async (req: Request): Promise<Response> => {
     ],
     generationConfig: {
       temperature: 0.3,
-      maxOutputTokens: 2048,
+      maxOutputTokens: 8192,
     },
   }
 
