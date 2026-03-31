@@ -12,7 +12,7 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Headers': 'Content-Type',
 }
 
-const MODEL = 'gemini-1.5-flash-latest'
+const MODEL = 'gemini-1.5-flash'
 
 export default async (req: Request): Promise<Response> => {
   if (req.method === 'OPTIONS') {
@@ -53,7 +53,7 @@ export default async (req: Request): Promise<Response> => {
 
   const systemPrompt = getSystemPrompt(slug)
 
-  const url = `https://generativelanguage.googleapis.com/v1/models/${MODEL}:generateContent?key=${apiKey}`
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`
 
   const geminiBody = {
     contents: [
