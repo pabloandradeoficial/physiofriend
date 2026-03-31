@@ -131,15 +131,22 @@ const AgentChatPage: React.FC = () => {
       // Persist conversation on first message
       let convId = conversationId
       if (!convId) {
+        console.log('[PF] Criando conversa para slug:', slug)
         const conv = await createConversation(slug || '', userText)
         if (conv) {
           convId = conv.id
           setConversationId(conv.id)
+          console.log('[PF] Conversa criada:', conv.id)
+        } else {
+          console.warn('[PF] createConversation retornou null — usuário não autenticado ou erro no Supabase')
         }
       }
 
       // Persist user message
-      if (convId) await addMessage(convId, 'user', userText)
+      if (convId) {
+        const saved = await addMessage(convId, 'user', userText)
+        console.log('[PF] Mensagem do usuário salva:', saved?.id ?? 'ERRO')
+      }
 
       let fullResponse = ''
 
@@ -158,7 +165,10 @@ const AgentChatPage: React.FC = () => {
       )
 
       // Persist assistant message
-      if (convId && fullResponse) await addMessage(convId, 'assistant', fullResponse)
+      if (convId && fullResponse) {
+        const saved = await addMessage(convId, 'assistant', fullResponse)
+        console.log('[PF] Mensagem do agente salva:', saved?.id ?? 'ERRO')
+      }
 
       // Atualiza histórico do Gemini
       setGeminiHistory(prev => [
