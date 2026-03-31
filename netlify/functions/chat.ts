@@ -1,10 +1,9 @@
-import { GoogleGenerativeAI } from '@google/generative-ai'
 import { getSystemPrompt } from '../../src/constants/prompts/index'
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Netlify Function — /api/chat
-// Proxies requests to Gemini 2.0 Flash, keeping the API key server-side.
-// Returns a Server-Sent Events stream so the frontend gets real streaming.
+// Netlify Function — /.netlify/functions/chat
+// Chama a API REST do Google Gemini diretamente (sem SDK).
+// A GEMINI_API_KEY fica exclusivamente no servidor.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const CORS_HEADERS = {
@@ -13,8 +12,9 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Headers': 'Content-Type',
 }
 
+const MODEL = 'gemini-1.5-flash-latest'
+
 export default async (req: Request): Promise<Response> => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: CORS_HEADERS })
   }
@@ -35,7 +35,7 @@ export default async (req: Request): Promise<Response> => {
   }
 
   let slug: string
-  let history: Array<{ role: 'user' | 'model'; parts: [{ text: string }] }>
+  let history: Array<{ role: string; parts: [{ text: string }] }>
   let message: string
 
   try {
@@ -52,56 +52,55 @@ export default async (req: Request): Promise<Response> => {
   }
 
   const systemPrompt = getSystemPrompt(slug)
-  const genAI = new GoogleGenerativeAI(apiKey)
 
-  const model = genAI.getGenerativeModel({
-    model: 'gemini-1.5-flash-latest',
-    systemInstruction: systemPrompt,
-  })
+  const url = `https://generativelanguage.googleapis.com/v1/models/${MODEL}:generateContent?key=${apiKey}`
 
-  const chat = model.startChat({
-    history,
+  const geminiBody = {
+    contents: [
+      ...history,
+      { role: 'user', parts: [{ text: message }] },
+    ],
+    systemInstruction: {
+      parts: [{ text: systemPrompt }],
+    },
     generationConfig: {
-      maxOutputTokens: 2048,
       temperature: 0.3,
-      topP: 0.8,
+      maxOutputTokens: 2048,
     },
-  })
+  }
 
-  // Stream response as Server-Sent Events
-  const encoder = new TextEncoder()
+  let geminiRes: Response
+  try {
+    geminiRes = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(geminiBody),
+    })
+  } catch {
+    return new Response(JSON.stringify({ error: 'Falha ao conectar com a API do Gemini.' }), {
+      status: 502,
+      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+    })
+  }
 
-  const stream = new ReadableStream({
-    async start(controller) {
-      try {
-        const result = await chat.sendMessageStream(message)
-        for await (const chunk of result.stream) {
-          const text = chunk.text()
-          if (text) {
-            controller.enqueue(
-              encoder.encode(`data: ${JSON.stringify({ text })}\n\n`)
-            )
-          }
-        }
-        controller.enqueue(encoder.encode('data: [DONE]\n\n'))
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : 'Erro interno'
-        controller.enqueue(
-          encoder.encode(`data: ${JSON.stringify({ error: msg })}\n\n`)
-        )
-      } finally {
-        controller.close()
-      }
-    },
-  })
+  if (!geminiRes.ok) {
+    const detail = await geminiRes.text().catch(() => '')
+    return new Response(JSON.stringify({ error: `Gemini API error ${geminiRes.status}: ${detail}` }), {
+      status: geminiRes.status,
+      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+    })
+  }
 
-  return new Response(stream, {
+  const data = await geminiRes.json() as {
+    candidates?: Array<{
+      content?: { parts?: Array<{ text?: string }> }
+    }>
+  }
+
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
+
+  return new Response(JSON.stringify({ text }), {
     status: 200,
-    headers: {
-      ...CORS_HEADERS,
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'X-Accel-Buffering': 'no',
-    },
+    headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
   })
 }
