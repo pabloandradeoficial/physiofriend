@@ -5,8 +5,14 @@ export async function createConversation(
   agentSlug: string,
   firstMessage: string,
 ): Promise<Conversation | null> {
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
+  console.log('[PF:svc] createConversation chamado, slug:', agentSlug)
+
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  console.log('[PF:svc] auth.getUser ->', user ? `uid=${user.id}` : 'SEM USUÁRIO', authError ?? '')
+  if (!user) {
+    console.warn('[PF:svc] Usuário não autenticado — conversa não será salva')
+    return null
+  }
 
   const title = firstMessage.length > 60 ? firstMessage.slice(0, 57) + '...' : firstMessage
 
@@ -17,9 +23,10 @@ export async function createConversation(
     .single()
 
   if (error) {
-    console.error('createConversation error:', error)
+    console.error('[PF:svc] createConversation INSERT error:', JSON.stringify(error))
     return null
   }
+  console.log('[PF:svc] Conversa inserida com sucesso, id:', data.id)
   return data as Conversation
 }
 
@@ -35,7 +42,7 @@ export async function addMessage(
     .single()
 
   if (error) {
-    console.error('addMessage error:', error)
+    console.error('[PF:svc] addMessage INSERT error:', JSON.stringify(error))
     return null
   }
 
@@ -49,6 +56,7 @@ export async function addMessage(
 
 export async function getConversations(): Promise<Conversation[]> {
   const { data: { user } } = await supabase.auth.getUser()
+  console.log('[PF:svc] getConversations - user:', user?.id ?? 'NÃO AUTENTICADO')
   if (!user) return []
 
   const { data, error } = await supabase
@@ -58,9 +66,10 @@ export async function getConversations(): Promise<Conversation[]> {
     .order('updated_at', { ascending: false })
 
   if (error) {
-    console.error('getConversations error:', error)
+    console.error('[PF:svc] getConversations SELECT error:', JSON.stringify(error))
     return []
   }
+  console.log('[PF:svc] getConversations retornou', data?.length ?? 0, 'registros')
   return (data ?? []) as Conversation[]
 }
 
