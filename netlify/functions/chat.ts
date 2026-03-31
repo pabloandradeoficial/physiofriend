@@ -601,6 +601,7 @@ export default async (req: Request): Promise<Response> => {
   try {
     const body = await req.json()
     slug = body.slug ?? ''
+    console.log('SLUG RECEBIDO:', slug)
     history = body.history ?? []
     message = body.message ?? ''
     if (!message) throw new Error('message is required')
