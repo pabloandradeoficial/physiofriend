@@ -12,7 +12,7 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Headers': 'Content-Type',
 }
 
-const MODEL = 'gemini-1.5-flash'
+const MODEL = 'gemini-2.5-flash'
 
 export default async (req: Request): Promise<Response> => {
   if (req.method === 'OPTIONS') {
