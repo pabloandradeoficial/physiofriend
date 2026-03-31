@@ -84,7 +84,7 @@ const SavedPage: React.FC = () => {
           {conversations.map(conv => (
             <button
               key={conv.id}
-              onClick={() => navigate(`/agents/${conv.agent_id}`)}
+              onClick={() => navigate(`/agents/${conv.agent_id}`, { state: { conversationId: conv.id, saved: conv.saved } })}
               className="flex items-center gap-4 w-full text-left px-5 py-4 rounded-xl transition-all duration-150"
               style={{ backgroundColor: '#ffffff', border: '1px solid rgba(0,0,0,0.07)' }}
               onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(212,168,67,0.3)'; e.currentTarget.style.backgroundColor = '#fdfaf3' }}

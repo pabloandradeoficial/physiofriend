@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import {
   ArrowLeft,
   Send,
@@ -17,7 +17,7 @@ import {
 import { getAgentBySlug } from '@/constants/agents'
 import { streamMessageToGemini } from '@/services/gemini'
 import type { ChatMessage } from '@/services/gemini'
-import { createConversation, addMessage, toggleSaved } from '@/services/conversations'
+import { createConversation, addMessage, toggleSaved, getMessages } from '@/services/conversations'
 import type { Message } from '@/types'
 
 const ICON_MAP: Record<string, React.ComponentType<{ size?: number; style?: React.CSSProperties; className?: string }>> = {
@@ -75,6 +75,7 @@ const renderInline = (text: string): React.ReactNode => {
 const AgentChatPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>()
   const navigate = useNavigate()
+  const location = useLocation()
   const agent = getAgentBySlug(slug || '')
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -86,6 +87,28 @@ const AgentChatPage: React.FC = () => {
   const [isTyping, setIsTyping] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [loadingHistory, setLoadingHistory] = useState(false)
+
+  // Load existing conversation if navigated from history/saved
+  useEffect(() => {
+    const state = location.state as { conversationId?: string; saved?: boolean } | null
+    if (!state?.conversationId) return
+
+    setConversationId(state.conversationId)
+    setSaved(state.saved ?? false)
+    setLoadingHistory(true)
+
+    getMessages(state.conversationId).then(msgs => {
+      setMessages(msgs.map(m => ({ ...m, conversation_id: state.conversationId! })))
+      // Rebuild Gemini history from persisted messages
+      const history: ChatMessage[] = msgs.map(m => ({
+        role: m.role === 'user' ? 'user' : 'model',
+        parts: [{ text: m.content }],
+      }))
+      setGeminiHistory(history)
+      setLoadingHistory(false)
+    })
+  }, [location.state])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -301,7 +324,16 @@ const AgentChatPage: React.FC = () => {
 
         {/* Messages area */}
         <div className="flex-1 overflow-y-auto px-6 py-6">
-          {messages.length === 0 ? (
+          {loadingHistory ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="flex items-center gap-2" style={{ color: '#9ca3af' }}>
+                {[0, 1, 2].map(i => (
+                  <div key={i} className="w-2 h-2 rounded-full animate-bounce" style={{ backgroundColor: '#d4a843', animationDelay: `${i * 0.15}s`, animationDuration: '0.9s' }} />
+                ))}
+                <span className="text-sm font-light ml-2">Carregando conversa...</span>
+              </div>
+            </div>
+          ) : messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full max-w-lg mx-auto text-center">
               <div
                 className="w-14 h-14 rounded-2xl flex items-center justify-center mb-6"
