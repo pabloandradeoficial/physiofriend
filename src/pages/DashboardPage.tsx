@@ -2,16 +2,12 @@ import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Sparkles, TrendingUp, Clock, ArrowRight } from 'lucide-react'
 import { useAuth } from '@/features/auth/AuthContext'
-import { useSubscription } from '@/features/subscription/SubscriptionContext'
 import AgentCard from '@/components/agents/AgentCard'
-import TrialBanner from '@/components/trial/TrialBanner'
 import { AGENTS } from '@/constants/agents'
 
 const DashboardPage: React.FC = () => {
   const { user } = useAuth()
-  const { canAccessAgent } = useSubscription()
   const navigate = useNavigate()
-  const unlockedCount = AGENTS.filter(a => canAccessAgent(a.slug)).length
 
   const displayName = user?.user_metadata?.full_name?.split(' ')[0] || 'Fisioterapeuta'
   const hour = new Date().getHours()
@@ -19,9 +15,6 @@ const DashboardPage: React.FC = () => {
 
   return (
     <div className="p-6 md:p-8 max-w-6xl mx-auto" style={{ fontFamily: 'Montserrat, sans-serif' }}>
-
-      {/* Trial banner — renders only for trial states */}
-      <TrialBanner />
 
       {/* Header greeting */}
       <div className="mb-10">
@@ -47,8 +40,8 @@ const DashboardPage: React.FC = () => {
         {[
           {
             label: 'Agentes disponíveis',
-            value: String(unlockedCount),
-            sub: unlockedCount === AGENTS.length ? 'todas especialidades' : `de ${AGENTS.length} especialidades`,
+            value: '5',
+            sub: 'especialidades',
             icon: Sparkles,
           },
           {
@@ -126,7 +119,7 @@ const DashboardPage: React.FC = () => {
       {/* Agent cards grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
         {AGENTS.map((agent, i) => (
-          <AgentCard key={agent.id} agent={agent} index={i} locked={!canAccessAgent(agent.slug)} />
+          <AgentCard key={agent.id} agent={agent} index={i} />
         ))}
       </div>
 

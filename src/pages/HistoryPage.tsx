@@ -1,13 +1,7 @@
 import React from 'react'
-import { MessageSquare, Clock } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
-import { useSubscription } from '@/features/subscription/SubscriptionContext'
+import { MessageSquare } from 'lucide-react'
 
 const HistoryPage: React.FC = () => {
-  const { subscription } = useSubscription()
-  const navigate = useNavigate()
-  const isFree = subscription.plan === 'free'
-
   return (
     <div className="p-6 md:p-8 max-w-4xl mx-auto" style={{ fontFamily: 'Montserrat, sans-serif' }}>
       <div className="mb-10">
@@ -32,30 +26,6 @@ const HistoryPage: React.FC = () => {
         className="mb-8"
         style={{ height: '1px', background: 'linear-gradient(to right, #e8ce85, transparent)' }}
       />
-
-      {/* Free plan notice */}
-      {isFree && (
-        <div
-          className="flex items-center justify-between gap-4 px-5 py-4 rounded-xl mb-8 flex-wrap gap-y-3"
-          style={{ backgroundColor: '#fdfaf3', border: '1px solid #f3e4b8' }}
-        >
-          <div className="flex items-center gap-3">
-            <Clock size={15} style={{ color: '#b8902a', flexShrink: 0 }} />
-            <p className="text-sm font-light" style={{ color: '#92650a' }}>
-              Plano Free: histórico limitado a <span className="font-medium">7 dias</span>.
-            </p>
-          </div>
-          <button
-            onClick={() => navigate('/plans')}
-            className="text-xs font-medium transition-colors duration-150 flex-shrink-0"
-            style={{ color: '#b8902a' }}
-            onMouseEnter={e => { e.currentTarget.style.color = '#d4a843' }}
-            onMouseLeave={e => { e.currentTarget.style.color = '#b8902a' }}
-          >
-            Fazer upgrade →
-          </button>
-        </div>
-      )}
 
       <div className="flex flex-col items-center justify-center py-24 text-center">
         <div

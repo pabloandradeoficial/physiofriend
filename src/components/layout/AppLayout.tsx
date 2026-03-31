@@ -10,34 +10,21 @@ import {
   Menu,
   X,
   ChevronRight,
-  Sparkles,
-  Clock,
 } from 'lucide-react'
 import { useAuth } from '@/features/auth/AuthContext'
-import { useSubscription } from '@/features/subscription/SubscriptionContext'
 
 const NAV_ITEMS = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/agents', icon: Bot, label: 'Agentes' },
   { to: '/history', icon: MessageSquare, label: 'Histórico' },
   { to: '/saved', icon: BookmarkCheck, label: 'Casos Salvos' },
-  { to: '/plans', icon: Sparkles, label: 'Planos' },
   { to: '/settings', icon: Settings, label: 'Configurações' },
 ]
 
-const PLAN_BADGE: Record<string, { label: string; bg: string; color: string }> = {
-  free:    { label: 'Free',    bg: '#f3f4f6',           color: '#6b7280' },
-  trial:   { label: 'Trial',   bg: 'rgba(212,168,67,0.12)', color: '#92650a' },
-  pro:     { label: 'Pro',     bg: '#faf3e0',           color: '#92650a' },
-  premium: { label: 'Premium', bg: '#1a1a1a',           color: '#d4a843' },
-}
-
 const AppLayout: React.FC = () => {
   const { user, signOut } = useAuth()
-  const { subscription, isTrialActive, isTrialExpired, trialDaysRemaining } = useSubscription()
   const navigate = useNavigate()
   const [mobileOpen, setMobileOpen] = useState(false)
-  const planBadge = PLAN_BADGE[subscription.plan] ?? PLAN_BADGE.free
 
   const handleSignOut = async () => {
     await signOut()
@@ -129,51 +116,6 @@ const AppLayout: React.FC = () => {
           </div>
         </nav>
 
-        {/* Trial status block */}
-        {(isTrialActive || isTrialExpired) && (
-          <div className="mx-3 mb-2">
-            <div
-              className="px-3 py-3 rounded-xl"
-              style={{
-                background: isTrialExpired
-                  ? 'linear-gradient(135deg, #fdf4e7, #fef9f0)'
-                  : 'linear-gradient(135deg, #fafaf8, #fdf9f2)',
-                border: `1px solid ${isTrialExpired ? 'rgba(212,168,67,0.35)' : 'rgba(212,168,67,0.2)'}`,
-              }}
-            >
-              <div className="flex items-center gap-2 mb-2">
-                <Clock size={12} style={{ color: '#d4a843', flexShrink: 0 }} />
-                <span className="text-xs font-semibold" style={{ color: '#7a5c18' }}>
-                  {isTrialExpired ? 'Trial encerrado' : 'Teste grátis ativo'}
-                </span>
-              </div>
-              <p className="text-xs font-light mb-2.5" style={{ color: '#9ca3af', lineHeight: 1.4 }}>
-                {isTrialExpired
-                  ? 'Faça upgrade para manter o acesso completo.'
-                  : `${trialDaysRemaining === 1 ? '1 dia restante' : `${trialDaysRemaining} dias restantes`} de acesso Pro.`}
-              </p>
-              <button
-                onClick={() => { navigate('/plans'); setMobileOpen(false) }}
-                className="w-full py-1.5 rounded-lg text-xs font-semibold transition-all duration-150"
-                style={{
-                  background: isTrialExpired
-                    ? 'linear-gradient(135deg, #d4a843, #b8902a)'
-                    : '#1a1a1a',
-                  color: '#ffffff',
-                }}
-                onMouseEnter={e => {
-                  if (!isTrialExpired) e.currentTarget.style.background = '#d4a843'
-                }}
-                onMouseLeave={e => {
-                  if (!isTrialExpired) e.currentTarget.style.background = '#1a1a1a'
-                }}
-              >
-                {isTrialExpired ? 'Fazer upgrade' : 'Ver planos'}
-              </button>
-            </div>
-          </div>
-        )}
-
         {/* Gold divider */}
         <div className="mx-6" style={{ height: '1px', background: 'linear-gradient(to right, transparent, #e8ce85, transparent)' }} />
 
@@ -196,17 +138,9 @@ const AppLayout: React.FC = () => {
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <p className="text-sm font-medium truncate" style={{ color: '#1a1a1a' }}>
-                  {displayName}
-                </p>
-                <span
-                  className="text-xs font-semibold px-1.5 py-0.5 rounded-md flex-shrink-0"
-                  style={{ background: planBadge.bg, color: planBadge.color, fontSize: '10px', letterSpacing: '0.04em' }}
-                >
-                  {planBadge.label}
-                </span>
-              </div>
+              <p className="text-sm font-medium truncate" style={{ color: '#1a1a1a' }}>
+                {displayName}
+              </p>
               <p className="text-xs truncate font-light" style={{ color: '#9ca3af' }}>
                 {user?.email}
               </p>
