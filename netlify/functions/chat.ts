@@ -57,12 +57,11 @@ export default async (req: Request): Promise<Response> => {
 
   const geminiBody = {
     contents: [
+      { role: 'user',  parts: [{ text: systemPrompt }] },
+      { role: 'model', parts: [{ text: 'Entendido. Estou pronto para ajudar.' }] },
       ...history,
-      { role: 'user', parts: [{ text: message }] },
+      { role: 'user',  parts: [{ text: message }] },
     ],
-    systemInstruction: {
-      parts: [{ text: systemPrompt }],
-    },
     generationConfig: {
       temperature: 0.3,
       maxOutputTokens: 2048,
