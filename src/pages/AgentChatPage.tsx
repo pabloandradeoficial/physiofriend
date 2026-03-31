@@ -15,7 +15,6 @@ import {
   AlertCircle,
 } from 'lucide-react'
 import { getAgentBySlug } from '@/constants/agents'
-import { getSystemPrompt } from '@/constants/prompts'
 import { streamMessageToGemini } from '@/services/gemini'
 import type { ChatMessage } from '@/services/gemini'
 import type { Message } from '@/types'
@@ -127,11 +126,10 @@ const AgentChatPage: React.FC = () => {
     }])
 
     try {
-      const systemPrompt = getSystemPrompt(slug || '')
       let fullResponse = ''
 
       await streamMessageToGemini(
-        systemPrompt,
+        slug || '',
         geminiHistory,
         userText,
         (chunk) => {

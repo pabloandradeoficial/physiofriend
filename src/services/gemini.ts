@@ -1,92 +1,69 @@
-import { GoogleGenerativeAI } from '@google/generative-ai'
-
-const apiKey = import.meta.env.VITE_GEMINI_API_KEY || ''
-
-let genAI: GoogleGenerativeAI | null = null
-
-const getClient = () => {
-  if (!genAI) {
-    genAI = new GoogleGenerativeAI(apiKey)
-  }
-  return genAI
-}
+// ─────────────────────────────────────────────────────────────────────────────
+// Gemini client — frontend layer
+// All calls go through the serverless function at /.netlify/functions/chat.
+// The API key never touches the browser bundle.
+// ─────────────────────────────────────────────────────────────────────────────
 
 export interface ChatMessage {
   role: 'user' | 'model'
   parts: [{ text: string }]
 }
 
-/**
- * Send a message to Gemini with full conversation history and system prompt.
- * Returns the response text.
- */
-export async function sendMessageToGemini(
-  systemPrompt: string,
-  history: ChatMessage[],
-  newMessage: string,
-): Promise<string> {
-  if (!apiKey) {
-    throw new Error('VITE_GEMINI_API_KEY não configurada.')
-  }
-
-  const client = getClient()
-
-  const model = client.getGenerativeModel({
-    model: 'gemini-2.0-flash',
-    systemInstruction: systemPrompt,
-  })
-
-  const chat = model.startChat({
-    history,
-    generationConfig: {
-      maxOutputTokens: 2048,
-      temperature: 0.3, // baixo para raciocínio clínico preciso
-      topP: 0.8,
-    },
-  })
-
-  const result = await chat.sendMessage(newMessage)
-  const response = await result.response
-  return response.text()
-}
+const FUNCTION_URL = '/.netlify/functions/chat'
 
 /**
- * Stream a message to Gemini with full conversation history and system prompt.
- * Calls onChunk with each text chunk as it arrives.
+ * Stream a response from Gemini via the serverless proxy.
+ * Calls onChunk with each text fragment as it arrives (SSE).
+ * Returns the full accumulated text when done.
  */
 export async function streamMessageToGemini(
-  systemPrompt: string,
+  slug: string,
   history: ChatMessage[],
   newMessage: string,
   onChunk: (chunk: string) => void,
 ): Promise<string> {
-  if (!apiKey) {
-    throw new Error('VITE_GEMINI_API_KEY não configurada.')
+  const response = await fetch(FUNCTION_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ slug, history, message: newMessage }),
+  })
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({})) as { error?: string }
+    throw new Error(err.error ?? `Erro ${response.status} ao chamar o agente.`)
   }
 
-  const client = getClient()
+  const reader = response.body?.getReader()
+  if (!reader) throw new Error('Streaming não suportado neste ambiente.')
 
-  const model = client.getGenerativeModel({
-    model: 'gemini-2.0-flash',
-    systemInstruction: systemPrompt,
-  })
-
-  const chat = model.startChat({
-    history,
-    generationConfig: {
-      maxOutputTokens: 2048,
-      temperature: 0.3,
-      topP: 0.8,
-    },
-  })
-
-  const result = await chat.sendMessageStream(newMessage)
-
+  const decoder = new TextDecoder()
   let fullText = ''
-  for await (const chunk of result.stream) {
-    const chunkText = chunk.text()
-    fullText += chunkText
-    onChunk(chunkText)
+  let buffer = ''
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+
+    buffer += decoder.decode(value, { stream: true })
+    const lines = buffer.split('\n')
+    // Keep incomplete last line in buffer
+    buffer = lines.pop() ?? ''
+
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue
+      const payload = line.slice(6).trim()
+      if (payload === '[DONE]') continue
+      try {
+        const parsed = JSON.parse(payload) as { text?: string; error?: string }
+        if (parsed.error) throw new Error(parsed.error)
+        if (parsed.text) {
+          fullText += parsed.text
+          onChunk(parsed.text)
+        }
+      } catch (e) {
+        if (e instanceof Error && e.message !== 'Unexpected end of JSON input') throw e
+      }
+    }
   }
 
   return fullText
