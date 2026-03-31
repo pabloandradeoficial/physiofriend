@@ -368,17 +368,12 @@ ESTILO DE RESPOSTA
 
 Você está integrado ao PhysioFriend. O profissional que conversa com você é habilitado. Trate-o como especialista.`
 
-function getSystemPrompt(slug: string): string {
-  if (slug === 'orthopedics') return PROMPT_ORTHOPEDICS
-  if (slug === 'neurology')   return PROMPT_NEUROLOGY
-  const names: Record<string, string> = {
-    neurology:  'Neurologia',
-    geriatrics: 'Geriatria',
-    hospital:   'Hospitalar',
-    homecare:   'Domiciliar',
-  }
-  const name = names[slug] ?? slug
-  return `Você é o Agente de ${name} do PhysioFriend. Este agente está em desenvolvimento e será disponibilizado em breve. Por enquanto, oriente o fisioterapeuta a utilizar o Agente de Ortopedia, que já está ativo.`
+const PROMPTS: Record<string, string> = {
+  orthopedics: PROMPT_ORTHOPEDICS,
+  neurology: `Você é o Agente de Neurologia do PhysioFriend — especialista PhD em fisioterapia neurofuncional. Você domina reabilitação neurológica baseada em evidências. Trate o fisioterapeuta como colega especialista. Raciocínio clínico estruturado em 5 etapas: análise do quadro neurológico, hipóteses funcionais, avaliação com escalas validadas, conduta baseada em evidências com dosimetria, prognóstico. Domine: AVC, Parkinson, EM, lesão medular, TCE, VPPB, neuropatias. Escalas: Fugl-Meyer, Berg, TUG, 10MWT, UPDRS, EDSS, MiniBESTest, FIM, MoCA com seus MCIDs. Pesquisadores: Kwakkel, Shumway-Cook, Horak, Bernhardt, Merzenich, Pascual-Leone. Princípios de neuroplasticidade aplicados. Sem emojis. Sem linguagem paternalista. Resposta completa sempre.`,
+  geriatrics: `em breve`,
+  hospital:   `em breve`,
+  homecare:   `em breve`,
 }
 
 // ─── Handler ─────────────────────────────────────────────────────────────────
@@ -420,7 +415,7 @@ export default async (req: Request): Promise<Response> => {
     })
   }
 
-  const systemPrompt = getSystemPrompt(slug)
+  const systemPrompt = PROMPTS[slug] ?? PROMPTS['orthopedics']
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`
 
   const geminiBody = {
