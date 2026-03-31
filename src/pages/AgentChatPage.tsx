@@ -15,9 +15,9 @@ import {
   AlertCircle,
 } from 'lucide-react'
 import { getAgentBySlug } from '@/constants/agents'
-import { getSystemPrompt } from '@/constants/prompts'
 import { streamMessageToGemini } from '@/services/gemini'
 import type { ChatMessage } from '@/services/gemini'
+import { createConversation, addMessage, toggleSaved } from '@/services/conversations'
 import type { Message } from '@/types'
 
 const ICON_MAP: Record<string, React.ComponentType<{ size?: number; style?: React.CSSProperties; className?: string }>> = {
@@ -81,6 +81,7 @@ const AgentChatPage: React.FC = () => {
 
   const [messages, setMessages] = useState<Message[]>([])
   const [geminiHistory, setGeminiHistory] = useState<ChatMessage[]>([])
+  const [conversationId, setConversationId] = useState<string | null>(null)
   const [input, setInput] = useState('')
   const [isTyping, setIsTyping] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -127,11 +128,23 @@ const AgentChatPage: React.FC = () => {
     }])
 
     try {
-      const systemPrompt = getSystemPrompt(slug || '')
+      // Persist conversation on first message
+      let convId = conversationId
+      if (!convId) {
+        const conv = await createConversation(slug || '', userText)
+        if (conv) {
+          convId = conv.id
+          setConversationId(conv.id)
+        }
+      }
+
+      // Persist user message
+      if (convId) await addMessage(convId, 'user', userText)
+
       let fullResponse = ''
 
       await streamMessageToGemini(
-        systemPrompt,
+        slug || '',
         geminiHistory,
         userText,
         (chunk) => {
@@ -143,6 +156,9 @@ const AgentChatPage: React.FC = () => {
           )
         },
       )
+
+      // Persist assistant message
+      if (convId && fullResponse) await addMessage(convId, 'assistant', fullResponse)
 
       // Atualiza histórico do Gemini
       setGeminiHistory(prev => [
@@ -169,6 +185,7 @@ const AgentChatPage: React.FC = () => {
   const handleNewCase = () => {
     setMessages([])
     setGeminiHistory([])
+    setConversationId(null)
     setSaved(false)
     setInput('')
     setError(null)
@@ -242,7 +259,11 @@ const AgentChatPage: React.FC = () => {
               Novo caso
             </button>
             <button
-              onClick={() => setSaved(s => !s)}
+              onClick={() => {
+                const next = !saved
+                setSaved(next)
+                if (conversationId) toggleSaved(conversationId, next)
+              }}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200"
               style={{
                 backgroundColor: saved ? '#faf3e0' : 'rgba(0,0,0,0.04)',
